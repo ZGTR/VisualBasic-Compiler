@@ -1,7 +1,7 @@
 # Visual Basic Compiler
 
 <strong>Brief</strong>
-<br/>This is a mini Visual Basic compiler I did back in 2012 when I was totally in love with compiler (still am) as a university project.
+<br/>This is a mini Visual Basic compiler I did back in 2011 when I was totally in love with compiler (still am) as a university project.
 <br/>Using Javacc, I've assembled the tokens, the grammar, the parsing tree and then the execusion. I haven't tackled OOP or arrays in this project (for that you can look at my JavaScript compiler which is pretty neat for how to parse them in compilers.) 
 
 <strong>Code and Comments</strong>
