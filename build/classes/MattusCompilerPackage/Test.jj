@@ -1,0 +1,880 @@
+options {
+   JAVA_UNICODE_ESCAPE = true;
+   IGNORE_CASE = true;
+}
+PARSER_BEGIN(Test)
+
+package MattusCompilerPackage;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import JJTree.*;
+import java.util.ArrayList;
+
+public class Test
+{
+	public static void main(String[] args) throws ParseException, TokenMgrError, FileNotFoundException
+	{
+		Test c = new Test(new FileReader("Z:\\test.txt"));
+                TreeNode program = BodyBase();
+                TypeController.FixTypesInTypesList();
+                TypeController.FixTypesInJJTree(program);
+                program.execute();
+		System.out.println("hi");
+	}
+}
+PARSER_END(Test)
+
+
+SKIP: {" " | "\t"}
+
+TOKEN : { <DIM: "DIM"> }
+TOKEN : { <AS: "AS"> }
+
+TOKEN : {<#ANYTHING : ["a"-"z"]|["A"-"Z"]|["0"-"9"]|"!"|"@"|"#"|"$"|"%"|"^"|"&"|"*"|"("|")"|"-"|"+"|"/"|"]"|"["|"\'"|";"|":"|">"|"<"|"?"|","|"."|"{"|"}"|"|">}
+
+<INSTRING> TOKEN : { <STR : "\"" >:DEFAULT}
+<INSTRING> MORE : { <MID : (<ANYTHING>)+ | " " | "\t"> }
+MORE : { "\"" : INSTRING}
+
+<INCOMMENT> TOKEN : { <COMMENTSTR : <EOL> >:DEFAULT}
+<INCOMMENT> MORE : { <MIDCOMMENT : (<ANYTHING>)+| " " | "\t"> }
+MORE : { "\'" : INCOMMENT}
+
+
+TOKEN : { <LET : "LET">}
+
+TOKEN : { <FOR: "FOR"> }
+TOKEN : { <TO: "TO"> }
+TOKEN : { <STEP: "STEP"> }
+TOKEN : { <NEXT: "NEXT"> }
+
+TOKEN : { <WHILE: "WHILE"> }
+TOKEN : { <WEND: "WEND"> }
+
+TOKEN : { <DO: "DO"> }
+TOKEN : { <LOOP: "LOOP"> }
+TOKEN : { <UNTIL: "UNTIL"> }
+
+TOKEN : { <SHARED : "SHARED"> }
+TOKEN : { <UNSIGNED: "_UNSIGNED"> }
+TOKEN : { <BIT : "_BIT" > }
+TOKEN : { <STRING : "STRING" > }
+TOKEN : { <MULT : "*" > }
+TOKEN : { <DIVIDE : "/" > }
+TOKEN : { <DIVIDEINT : "\\" > }
+TOKEN : { < PLUS : "+"> }
+TOKEN : { < MINUS : "-"> }
+TOKEN : { <DOLLARSIGN : "$" > }
+
+TOKEN : { < NUMBER : <DIGITS> | <DIGITS> "." <DIGITS> | <DIGITS> "." | "." <DIGITS> > }
+TOKEN : { < #DIGITS : (["0"-"9"])+ > }
+
+//TOKEN : { < TYPEWITHOUTPREFIX : "SINGLE" | "DOUBLE" | "_FLOAT" | "_OFFSET" | "STRING"> }
+//TOKEN : { < TYPECANTAKEPREFIX : "_BIT" | "_BYTE" | "INTEGER" | "LONG" | "_INTEGER64" > }
+//TOKEN : { < TYPETEST : "INTEGER" | "DOUBLE" | "STRING"> }
+
+TOKEN : { <END : "END"> }
+TOKEN : { <IF : "IF"> | <THEN : "THEN"> | <ELSE : "ELSE"> }
+
+TOKEN : { < EQUALS : "="> }
+TOKEN : { < GREATEREQUALS : ">=" > }
+TOKEN : { < LESSEQUALS : "=<" > }
+TOKEN : { < GREATER : ">" > }
+TOKEN : { < LESS : "<" > }
+TOKEN : { < AND : "AND" > }
+TOKEN : { < OR : "OR" > }
+TOKEN : { < XOR : "XOR" > }
+TOKEN : { < NOT : "NOT"> }
+
+TOKEN : { <EXIT : "EXIT">}
+TOKEN : { <SUB : "SUB">}
+TOKEN : { <FUNCTION : "FUNCTION">}
+
+TOKEN : { < ENDIF : <END> (" " | "\t")+ <IF> > }
+TOKEN : { < ENDFUNCTION : <END> (" " | "\t")+ <FUNCTION> > }
+
+
+TOKEN : { < NOTEQUALS : "<>" | "><" > }
+//TOKEN : { < LOGICALOP : "AND" | "OR" | "XOR" | "EQV" | "IMP" > }
+//TOKEN : { < RELATIONALOP : ">" | "<" | <GREATEREQUALS> | <LESSEQUALS> | <NOTEQUALS> | <EQUALS> > }
+
+
+TOKEN : { <KWTYPE : "TYPE">}
+//TOKEN : { <TYPE : <KWTYPE> (" " | "\t")+ <TYPENAME>>}
+TOKEN : { <#TYPENAME : (["a"-"z"] | ["A"-"Z"])(["a"-"z"] | ["A"-"Z"]|["0"-"9"]|"_")* >}
+
+TOKEN : { <GOTO : "GOTO"> }
+
+TOKEN : { <SELECT : "SELECT"> }
+TOKEN : { <CASE : "CASE"> }
+
+TOKEN : { < PRINT : "PRINT" > }
+TOKEN : { < INPUT : "INPUT" > }
+
+TOKEN : { < TYPESUFFIX : "`" | "`n" | "~`" | "%%" | "~%%" | "%" | "~%" | "&" | "~&" | "&&" | "~&&" | "!" | "#" | "##" | "%&" > }
+TOKEN : { < ID : (["a"-"z"] | ["A"-"Z"]) (("." | "_")? (["a"-"z"] | ["A"-"Z"] | <DIGITS>)+ )* > }
+TOKEN : { < IDWITHSUFFIX: <ID> <TYPESUFFIX> > }
+
+
+
+TOKEN : { < EOL : "\r\n"> }
+
+void BITN():
+{}
+{
+    <BIT> <MULT> DIGITSPROD()
+}
+
+void STRINGN():
+{}
+{
+    <STRING> <DOLLARSIGN> DIGITSPROD()
+}
+
+Token DIGITSPROD():
+{
+    Token t;
+}
+{
+    t = <DIG : (["0"-"9"])+>
+    {
+        return t;
+    }
+}
+
+Token TYPE():
+{
+    Token t = null;
+}
+{
+    //<TYPEWITHOUTPREFIX> | <TYPECANTAKEPREFIX> | <UNSIGNED> <TYPECANTAKEPREFIX> | BITN() | STRINGN()
+    //t = <TYPETEST>
+    t = <ID>
+    {return t;}
+}
+
+BodyNode BodyBase():
+{
+    BodyNode n = new BodyNode(null);
+    n.isBase = true;
+    TreeNode next = null;
+}
+{
+            (
+                next = Body(n)
+            )
+           {
+                if (next != null)
+                {
+                    n.addChild(next);
+                    next = null;
+                }
+            }
+    <EOF>
+    {
+            return n;
+    }
+}
+
+BodyNode Body(TreeNode baseNode):
+{
+    BodyNode n = new BodyNode(baseNode);
+    TreeNode next = null;
+}
+{
+    (
+        try
+        {
+            (
+                LOOKAHEAD(<END> <EOL>)
+                ( next = EndProgramStatement(n) )
+                |
+                <EOL>
+                |
+                next = DIMStatement(n)
+                |
+                next = ForStatement(n)
+                |
+                (
+                    LOOKAHEAD(<ID> ":")
+                    next = LabelStatement(n)
+                    |
+                    LOOKAHEAD(<ID> "=")
+                    next = AssignWithEOL(n)
+                    |
+                    next = SubCall(n)
+                )
+                |
+                next = Print(n)
+                |
+                next = IfStatement(n)
+                |
+                next = WhileStatement(n)
+                |
+                next = GotoStatement(n)
+                |
+                TypeUD(n)
+                |
+                next = ExitForStatement(n)
+                |
+                next = Input(n)
+                |
+                Sub(n)
+                |
+                Function(n)
+            )
+            {
+                if (next != null)
+                {
+                    n.addChild(next);
+                    next = null;
+                }
+            }
+        }
+        catch(ParseException ex)
+        {
+            System.err.println(ex.getMessage());
+            while(getToken(0).kind != EOL)
+                    getNextToken();
+        }
+    )*
+    {
+            return n;
+    }
+}
+
+ForNode ForStatement(TreeNode baseNode):
+{       
+        ForNode forNode = new ForNode(baseNode);
+        BodyNode body = new BodyNode(forNode);
+	TreeNode next;
+        VariableNode vNode;
+        ConstantNode cNode;
+        Token t;
+}
+{
+    <FOR> next = AssignWithoutEOL(body) {body.addChild(next);} <TO> next = Expr(body) {body.addChild(next);} 
+    ( <STEP> ( 
+                 LOOKAHEAD (<ID> "=")
+                 next = AssignWithoutEOL(body) { forNode.setStepOccured(true);  body.addChild(next);}
+                 |
+                 next = Expr(body) { forNode.setStepOccured(true); body.addChild(next);} 
+             )  
+    )? <EOL>
+    next = Body(body) {body.addChild(next);}
+    <NEXT> ( t = <ID> { forNode.setVarNextOccured(true); vNode = new VariableNode(t.image, body); body.addChild(vNode);} )? <EOL>
+    {
+        forNode.addChild(body);
+        return forNode;
+    }
+}
+
+EndProgramNode EndProgramStatement(TreeNode baseNode):
+{
+    EndProgramNode eNode = new EndProgramNode(baseNode);
+}
+{
+    <END> <EOL>
+    {
+        return eNode;
+    }
+}
+
+TreeNode LabelStatement(TreeNode baseNode):
+{
+    BodyNode next;    
+    LabelNode labelNode = new LabelNode(baseNode);
+    Token t;
+}
+{
+    t = <ID> ":" <EOL> {labelNode.setLabelString(t.image); }
+    next =  Body(baseNode) {labelNode.setBodyNode(next); baseNode.addChild(next);}
+    {
+        return labelNode;        
+    }
+}
+
+TreeNode GotoStatement(TreeNode baseNode):
+{
+    GotoNode gNode;
+    Token t;
+}
+{
+    <GOTO> t = <ID>  <EOL> {gNode = new GotoNode(baseNode); gNode.setGotoString(t.image);}
+    {
+        return gNode;
+    }
+}
+
+TreeNode ExitForStatement(TreeNode baseNode):
+{
+    ExitForNode eNode;
+    Token t;
+}
+{
+    <EXIT> <FOR>  <EOL> {eNode = new ExitForNode(baseNode);}
+    {
+        return eNode;
+    }
+}
+
+
+IfElseNode IfStatement(TreeNode baseNode):
+{
+	IfElseNode ifElseNode = new IfElseNode(baseNode);
+	BodyNode ifNode = new BodyNode(ifElseNode);
+	BodyNode elseNode = new BodyNode(ifElseNode);
+	TreeNode next;
+}
+{
+    <IF> next = LogExpr(baseNode) { ifNode.addChild(next);} <THEN> <EOL>
+    next = Body(baseNode) {ifNode.addChild(next);}
+    (
+        <ELSE> next = Body(baseNode) {elseNode.addChild(next);}
+    )?
+    <ENDIF> <EOL>
+    {
+        ifElseNode.addChild(ifNode);
+        ifElseNode.addChild(elseNode);
+        return ifElseNode;
+    }
+}
+
+void TypeUD(TreeNode baseNode):
+{     
+    TypeUDNodeStructure typeNode = new TypeUDNodeStructure();
+    AssignNode aNode;
+    TreeNode next;
+    Token t;
+}
+{
+    <KWTYPE> t = <ID> {typeNode.setStringOfTypeNode(t.image);} <EOL>
+    ( aNode = TypeDIMStatement(baseNode) {typeNode.addFieldToHashmap(aNode);} )+
+    <END> <KWTYPE>
+    {
+        TypeController.TypeUDList.add(typeNode);
+    }
+}
+
+AssignNode DIMSUFFIX(TreeNode baseNode):
+{
+    AssignNode aNode;
+    Token tShared = null;
+    Token tType = null;
+    Token tVariable;
+}
+{
+    (tShared = <SHARED>)?
+    //LOOKAHEAD ( <IDWITHSUFFIX> )
+    //(
+    //    <IDWITHSUFFIX>
+    //    ("(" (<NUMBER>)? ")")?
+    //)
+    //|    
+        tVariable = <ID>
+        //("(" (<NUMBER>)? ")")?
+        (<AS> tType = TYPE())? { aNode = new AssignNode(tVariable.image, tType, tShared, baseNode); }
+    
+    {
+        return aNode;
+    }
+}
+
+AssignNode TypeDIMStatement(TreeNode baseNode):
+{
+    AssignNode aNode;
+}
+{
+    aNode = DIMSUFFIX(baseNode)
+    //("," DIMSUFFIX(baseNode))*
+    <EOL>
+    {
+        return aNode;
+    }
+}
+
+AssignNode DIMStatement(TreeNode baseNode):
+{
+    AssignNode aNode;
+}
+{
+    <DIM> aNode = DIMSUFFIX(baseNode)
+    //("," DIMSUFFIX(baseNode))*
+    <EOL>
+    {
+        return aNode;
+    }
+}
+
+TreeNode WhileStatement(TreeNode baseNode):
+{
+    	TreeNode node;
+}
+{
+    (
+        node = WhileNative(baseNode)
+        |
+        (
+            LOOKAHEAD (<DO> <WHILE> LogExpr() <EOL> Body() <LOOP>  <EOL>)
+            node = DoInitWhileStatement(baseNode)
+            |
+            LOOKAHEAD (<DO> <UNTIL> LogExpr() <EOL> Body() <LOOP>  <EOL>)
+            node = DoInitUntilStatement(baseNode)
+            |
+            (
+                LOOKAHEAD (<DO> <EOL> Body(doWhileNode) <LOOP> <WHILE> LogExpr(doWhileNode) <EOL>)
+                node = DoPostfixWhileStatement(baseNode)
+                |
+                node = DoPostfixUntilStatement(baseNode)
+            )
+        )
+    )
+    {
+        return node;
+    }
+}
+
+WhileNode WhileNative(TreeNode baseNode):
+{
+	WhileNode whileNode = new WhileNode(baseNode);
+        BodyNode bodyNode = new BodyNode(whileNode);
+	TreeNode next;
+}
+{
+    <WHILE> next = LogExpr(bodyNode) {bodyNode.addChild(next);} <EOL>
+    next = Body(bodyNode) {bodyNode.addChild(next);}
+    <WEND> <EOL>
+    {
+        whileNode.addChild(bodyNode);
+        return whileNode;
+    }
+}
+
+WhileNode DoInitWhileStatement(TreeNode baseNode):
+{
+	WhileNode whileNode = new WhileNode(baseNode);
+        BodyNode bodyNode = new BodyNode(whileNode);
+	TreeNode next;
+}
+{
+    <DO> 
+    (
+        <WHILE> next = LogExpr(bodyNode) {bodyNode.addChild(next);} <EOL>
+        next =  Body(bodyNode) {bodyNode.addChild(next);}
+        <LOOP> <EOL>        
+    )
+    {
+        whileNode.addChild(bodyNode);
+        return whileNode;
+    }
+}
+
+UntilNode DoInitUntilStatement(TreeNode baseNode):
+{
+        UntilNode unitlNode = new UntilNode(baseNode);
+        BodyNode bodyNode = new BodyNode(unitlNode);
+	TreeNode next;
+}
+{
+    <DO> 
+    (
+        <UNTIL> next = LogExpr(bodyNode) {bodyNode.addChild(next);} <EOL>
+        next =  Body(unitlNode) {bodyNode.addChild(next);}
+        <LOOP> <EOL>
+    )
+    {
+        unitlNode.addChild(bodyNode);
+        return unitlNode;
+    }
+}
+
+WhileNode DoPostfixWhileStatement(TreeNode baseNode):
+{
+	WhileNode doWhileNode = new WhileNode(baseNode);
+        BodyNode bodyNode = new BodyNode(doWhileNode);
+        TreeNode nextWhile1;
+        TreeNode nextWhile2;
+}
+{
+    <DO> 
+    (
+        <EOL>
+        nextWhile1 = Body(bodyNode)
+        <LOOP> <WHILE> nextWhile2 = LogExpr(bodyNode) 
+        {
+            bodyNode.addChild(nextWhile2); 
+            bodyNode.addChild(nextWhile1);     
+        } <EOL>  
+    )
+    {
+        doWhileNode.addChild(bodyNode);
+        return doWhileNode;
+    }
+}
+
+UntilNode DoPostfixUntilStatement(TreeNode baseNode):
+{
+        UntilNode doUnitlNode = new UntilNode(baseNode);
+        BodyNode bodyNode = new BodyNode(doUnitlNode);
+	TreeNode nextUntil1;
+        TreeNode nextUntil2;
+}
+{
+    <DO> 
+        <EOL>
+        nextUntil1 = Body(bodyNode) 
+        <LOOP> <UNTIL> nextUntil2 = LogExpr(bodyNode) 
+        {
+            bodyNode.addChild(nextUntil2); 
+            bodyNode.addChild(nextUntil1);     
+        } 
+        <EOL>
+    {
+        doUnitlNode.addChild(bodyNode);
+        return doUnitlNode;
+    }
+}
+
+TreeNode Expr(TreeNode baseNode):
+{
+    double i;
+    double value;
+    ExpressionNode n = new ExpressionNode(baseNode);
+    TreeNode n1,n2 = null;
+
+}
+{
+    n1 = Term(n)
+    {n.addChild(n1);}
+    (
+            <PLUS>
+            n2= Expr(n)
+            { n.setType("+");n.addChild(n2);}
+        |
+            <MINUS>
+            n2= Expr(n)
+            { n.setType("-");n.addChild(n2); }
+    )?
+    {
+        if (n2 == null)
+            return n1 ;
+        return n;
+    }
+}
+
+TreeNode Term(TreeNode baseNode):
+{
+    double i ;
+    double value ;
+    ExpressionNode n = new ExpressionNode(baseNode);
+    TreeNode n1,n2 = null;
+}
+{
+    n1 = Primary(n)
+    {n.addChild(n1);}
+    (
+            <MULT>
+            n2 = Term(n)
+            { n.setType("*");n.addChild(n2); }
+        |
+            <DIVIDE>
+            n2 = Term(n)
+            { n.setType("/");n.addChild(n2);}
+    )?
+    {
+        if (n2 == null)
+            return n1 ;
+        return n;
+    }
+}
+
+TreeNode Primary(TreeNode baseNode):
+{
+    Token t, tType ;
+    TreeNode paramNode;
+    double d ;
+    //ExpressionNode n = new ExpressionNode(baseNode);
+    TreeNode n,n1 = null;
+    ArrayList<TreeNode> params = new ArrayList<TreeNode>();
+}
+{
+    t=<NUMBER>
+    { return new ConstantNode(Double.parseDouble(t.image), baseNode); }
+    |
+        "(" n = Expr(baseNode) ")"
+        { return n; }
+    |
+        <MINUS> n1 = Primary(baseNode)
+    {
+        n = new ExpressionNode(baseNode);
+        ((ExpressionNode)n).setType("-");
+        n.addChild(new ConstantNode(0.0, n));
+        n.addChild(n1);
+        return n ;
+    }
+    |
+    t = <STR>
+    {
+        return new ConstantNode(t.image, baseNode);
+    }
+    |
+    LOOKAHEAD(<ID>"(")
+    t = <ID> ( "(" paramNode = Expr(baseNode){params.add(paramNode);} ("," paramNode = Expr(baseNode){params.add(paramNode);})* ")" )
+    {
+        return new FunctionCallNode(t.image, params, baseNode);
+    }
+    |
+    t = <ID>
+    {
+        return new VariableNode(t.image, baseNode);
+    }
+
+}
+
+AssignNode AssignWithoutEOL(TreeNode baseNode):
+{
+    AssignNode n;
+    TreeNode expr;
+    Token t;
+}
+{
+    (t = <ID> |t = <IDWITHSUFFIX> ) <EQUALS> (expr = Expr(baseNode))
+    {
+        n = new AssignNode(t.image, baseNode);
+        n.addChild(expr);
+        return  n;
+    }
+}
+
+AssignNode AssignWithEOL(TreeNode baseNode):
+{
+    AssignNode n;
+}
+{
+    (n = AssignWithoutEOL(baseNode)) <EOL>
+    {
+        return n;
+    }
+}
+
+TreeNode LogExpr(TreeNode baseNode):
+{
+    //boolean l, r, result;
+    ExpressionNode n = new ExpressionNode(baseNode);
+    TreeNode n1,n2 = null;
+}
+{
+    n1 = ANDS(n)//{result = l;}
+    (
+            <OR>
+            n2= LogExpr(n)
+            {  n.setType("OR");n.addChild(n1);n.addChild(n2);}
+        |
+            <XOR>
+            n2= LogExpr(n)
+            { n.setType("XOR");n.addChild(n1);n.addChild(n2);}
+    )?
+    {
+        if (n2 == null)
+            return n1;
+         return n ;
+    }
+}
+
+TreeNode ANDS(TreeNode baseNode):
+{
+    //boolean l, r;
+    ExpressionNode n = new ExpressionNode(baseNode);
+    TreeNode n1,n2 = null;
+}
+{
+    n1 = Relational(n)//{r = l;}
+    (
+        <AND>
+        n2 = ANDS(n)
+
+    )?
+    {
+        if (n2 == null)
+            return n1;
+         return n ;
+    }
+}
+
+TreeNode Relational(TreeNode baseNode):
+{
+    //double l, r;
+    //boolean result;
+    ExpressionNode n = new ExpressionNode(baseNode);
+    TreeNode n1,n2 = null;
+}
+{
+
+    <NOT> n2 = Relational(n)
+    {
+        n1 = new ConstantNode(0, n);
+        n.setType("NOT");
+        n.addChild(n1);
+        n.addChild(n2);
+        return n;
+    }
+    |
+
+    LOOKAHEAD("(" LogExpr(n) ")")
+    "(" n1 = LogExpr(n) ")"
+    { return n1; }
+    |
+    n1 = Expr(n)
+    (
+            <GREATER>
+            n2 = Expr(n)
+            { n.setType(">");n.addChild(n1);n.addChild(n2); }
+        |
+            <LESS>
+            n2 = Expr(n)
+            { n.setType("<");n.addChild(n1);n.addChild(n2); }
+        |
+            <GREATEREQUALS>
+            n2 = Expr(n)
+            { n.setType(">=");n.addChild(n1);n.addChild(n2); }
+        |
+            <LESSEQUALS>
+            n2 = Expr(n)
+            { n.setType("<=");n.addChild(n1);n.addChild(n2);}
+        |
+            "=="
+            n2 = Expr(n)
+            { n.setType("==");n.addChild(n1);n.addChild(n2);}
+    )?
+    {
+        if (n2 == null)
+            return n1;
+         return n ;
+    }
+}
+
+
+TreeNode Print(TreeNode baseNode):
+{
+    TreeNode printNode = new PrintNode(baseNode), expr;
+}
+{
+    <PRINT> ((expr = Expr(printNode)){printNode.addChild(expr); } )("," (expr = Expr(printNode)){printNode.addChild(expr);})*
+    <EOL>
+    {
+        return printNode;
+    }
+}
+void Function(TreeNode baseNode):
+{
+    Token fName;
+    Token pType = null;
+    Token pName;
+    ArrayList<Parameter> params = new ArrayList<Parameter>();
+    FunctionNode functionNode;
+    TreeNode next;
+}
+{
+    <FUNCTION> (fName = <ID> |fName = <IDWITHSUFFIX>)   (
+                                                            "(" (pName = <ID> (<AS> pType = TYPE())?
+                                                            {
+                                                                if (pType !=null){
+                                                                params.add(new Parameter(pName.image, pType.image));
+                                                                pType = null;
+                                                                }
+                                                                else
+                                                                params.add(new Parameter(pName.image, "DOUBLE"));
+                                                            }
+                                                            ("," pName = <ID> (<AS> pType = TYPE())?
+                                                                {
+                                                                  if (pType !=null){
+                                                                        params.add(new Parameter(pName.image, pType.image));
+                                                                        pType = null;
+                                                                    }
+                                                                    else
+                                                                        params.add(new Parameter(pName.image, "DOUBLE"));
+                                                                })*)?
+                                                            ")"
+                                                        )? <EOL>
+    {
+        functionNode = new FunctionNode(fName.image, params, "DOUBLE", baseNode);
+        baseNode.Functions.put(fName.image, functionNode);
+    }
+
+    next = Body(functionNode)
+    {
+        functionNode.addChild(next);
+    }
+
+    <ENDFUNCTION> <EOL>
+
+}
+
+void Sub(TreeNode baseNode):
+{
+    Token sName;
+    Token pType = null;
+    Token pName;
+    ArrayList<Parameter> params = new ArrayList<Parameter>();
+    SubNode subNode;
+    TreeNode next;
+}
+{
+    <SUB> (sName = <ID>)   (
+                                                            "(" (pName = <ID> (<AS> pType = TYPE())?
+                                                            {
+                                                                if (pType !=null){
+                                                                params.add(new Parameter(pName.image, pType.image));
+                                                                pType = null;
+                                                                }
+                                                                else
+                                                                params.add(new Parameter(pName.image, "DOUBLE"));
+                                                            }
+                                                            ("," pName = <ID> (<AS> pType = TYPE())?
+                                                                {
+                                                                  if (pType !=null){
+                                                                        params.add(new Parameter(pName.image, pType.image));
+                                                                        pType = null;
+                                                                    }
+                                                                    else
+                                                                        params.add(new Parameter(pName.image, "DOUBLE"));
+                                                                })*)?
+                                                            ")"
+                                                        )? <EOL>
+    {
+        subNode = new SubNode(sName.image, params);
+        baseNode.Subs.put(sName.image, subNode);
+    }
+
+    next = Body(subNode)
+    {
+        subNode.addChild(next);
+    }
+
+    <END> <SUB> <EOL>
+
+}
+TreeNode SubCall(TreeNode baseNode):
+{
+    TreeNode paramNode;
+    Token t;
+    ArrayList<TreeNode> params = new ArrayList<TreeNode>();
+}
+{
+    t = <ID> ( "(" paramNode = Expr(baseNode){params.add(paramNode);} ("," paramNode = Expr(baseNode){params.add(paramNode);})* ")" )
+    {
+        return new SubCallNode(t.image, params, baseNode);
+    }
+}
+
+TreeNode Input(TreeNode baseNode):
+{
+    ArrayList<String> variables = new ArrayList<String>();
+    Token t;
+}
+{
+    <INPUT> t = <ID>{variables.add(t.image);}("," t = <ID>{variables.add(t.image);})*
+    {
+        return new InputNode(variables, baseNode);
+    }
+}

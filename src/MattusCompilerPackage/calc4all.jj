@@ -1,0 +1,220 @@
+PARSER_BEGIN(CALC4ALL)
+
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.util.HashMap;
+
+public class CALC4ALL
+{
+	public static void main(String [] args) throws ParseException,TokenMgrError, FileNotFoundException
+	{
+		CALC4ALL c = new CALC4ALL(new FileReader("d:\\test.txt"));
+		TreeNode n = S();
+		n.execute();
+	}
+
+	static HashMap<String,Double> vars = new HashMap<String,Double>();
+}
+
+
+PARSER_END(CALC4ALL)
+
+SKIP:
+{
+	" "
+}
+
+TOKEN:
+{
+	<NUM: (["0"-"9"])+ ("." (["0"-"9"])+)?> | 
+	<INPUT: "input"> |
+	<PRINT: "print"> |
+	<EOL: "\r\n"> |
+	<REPEAT: "repeat"> |
+	<IF: "if"> |
+	<ELSE: "else"> |
+	<END: "end"> |
+	<ID: (["a"-"z"]|["A"-"Z"])+>
+}
+
+ProgramNode S() : 
+{
+	ProgramNode n = new ProgramNode();	
+	TreeNode next;
+}
+{
+	(
+            try
+            {
+                    (
+                        next = print() | next = input() | next = statement()
+                       | next = If() | next = Repeat()
+                    )
+                    { n.addChild(next);}
+            }
+            catch(ParseException ex)
+            {
+                    System.err.println(ex.getMessage());
+                    while(getToken(0).kind != EOL)
+                            getNextToken();
+            }
+	) * <EOF>
+	{
+		return n;
+	}
+}
+
+TreeNode E() :
+{
+	ExpressionNode n = new ExpressionNode();
+	TreeNode n1,n2 = null;
+}
+{
+	(n1 = F() ("+" n2 = E() {n.setType('+');n.addChild(n1);n.addChild(n2);} | "-" n2 = E(){n.setType('-');n.addChild(n1);n.addChild(n2);})?)
+	{
+		if (n2 == null)
+			return n1;
+		else 
+			return n;
+	}
+}
+
+TreeNode F() :
+{
+	ExpressionNode n = new ExpressionNode();
+	TreeNode n1,n2 = null;	
+}
+{
+	(n1 = I() ( "*" n2 = F() {n.setType('*');n.addChild(n1);n.addChild(n2);} | "/" n2 = F(){n.setType('/');n.addChild(n1);n.addChild(n2);})?)
+	{
+		if (n2 == null)
+			return n1;
+		else 
+			return n;
+	}
+}
+
+TreeNode I() :
+{
+	TreeNode n;
+	Token t;
+}
+{
+	(t = <NUM> {n = new ConstantNode(Double.parseDouble(t.image)); } | ("(" n = E() ")") | t = <ID> {n = new VariableNode(vars); ((VariableNode)n).setVar(t.image);})
+	{
+		return n;
+	}
+}
+
+
+StatementNode statement() :
+{
+	Token t;
+	StatementNode n;
+	TreeNode child;
+}
+{
+	t = <ID> "=" child = E() <EOL> {n = new StatementNode(vars,t.image); n.addChild(child); return n;}
+}
+
+PrintNode print() :
+{
+	PrintNode n = new PrintNode();
+	TreeNode next;
+}
+{
+	<PRINT> next = E() {n.addChild(next);}
+	("," next = E() {n.addChild(next);})* <EOL>
+	{
+		return n;
+	}
+}
+
+InputNode input() :
+{
+	InputNode n = new InputNode(vars);
+	Token t;
+}
+{
+	<INPUT> t = <ID> <EOL> {
+		n.setVar(t.image); return n;
+	}	
+}
+
+ExpressionNode BE() :
+{
+	ExpressionNode n = new ExpressionNode();
+	TreeNode n1,n2;
+}
+{
+	n1 = E() (">" {n.setType('>');}
+		| "<" {n.setType('<');}
+		| "=" {n.setType('=');}
+		| "!" {n.setType('!');} ) n2 = E()
+	{n.addChild(n1); n.addChild(n2); return n;}	
+}
+
+RepeatNode Repeat() :
+{
+	RepeatNode n = new RepeatNode();
+	TreeNode next;
+}
+{
+	<REPEAT> next = BE() {n.addChild(next);} <EOL>
+	(
+            try
+            {
+                    (next = print() | next = input() | next = statement()
+                    | next = If() | next = Repeat()){ n.addChild(next);}
+            }
+            catch(ParseException ex)
+            {
+                    System.err.println(ex.getMessage());
+                    while(getToken(0).kind != EOL)
+                            getNextToken();
+            }
+	) *	
+	<END><EOL> {return n;}
+}
+
+IfNode If() :
+{
+	IfNode n = new IfNode();
+	ProgramNode n1 = new ProgramNode();
+	ProgramNode n2 = new ProgramNode();
+	TreeNode next;	
+}
+{
+	<IF> next = BE() {n.addChild(next); n.addChild(n1);} <EOL>
+		(
+	try
+	{
+		(next = print() | next = input() | next = statement()
+		| next = If() | next = Repeat()){ n1.addChild(next);}
+	}
+	catch(ParseException ex)
+	{
+		System.err.println(ex.getMessage());
+		while(getToken(0).kind != EOL)
+			getNextToken();
+	}
+
+	) *
+	(<ELSE> <EOL> {n.addChild(n2);}
+	(
+	try
+	{
+		(next = print() | next = input() | next = statement()
+		| next = If() | next = Repeat()){ n2.addChild(next);}
+	}
+	catch(ParseException ex)
+	{
+		System.err.println(ex.getMessage());
+		while(getToken(0).kind != EOL)
+			getNextToken();
+	}
+
+	) *
+	)?
+	<END><EOL> {return n;}
+}
