@@ -1,7 +1,7 @@
-# VisualBasic Compiler
+# Visual Basic Compiler
 
 <strong>Brief</strong>
-<br/>This is a mini VisualBasic compiler I did back in 2012 when I was totally in love with compiler (still am.) 
+<br/>This is a mini Visual Basic compiler I did back in 2012 when I was totally in love with compiler (still am) as a university project.
 <br/>Using Javacc, I've assembled the tokens, the grammar, the parsing tree and then the execusion. I haven't tackled OOP or arrays in this project (for that you can look at my JavaScript compiler which is pretty neat for how to parse them in compilers.) 
 
 <strong>Code and Comments</strong>
@@ -11,4 +11,4 @@
 <br/>If you look at the JJTree folder you can figure out what this compiler supports and how to do them. It supports some easy syntax (like expressions, assignments, loops, ..etc) while also has the ability to handle much higher complex stuff (functions, labels and gotos, structs.)
 
 <strong>Disclaimer</strong>
-<br/>As said before this compiler doesn't support the declaration of objects (OOP) or the manipulation of arrays. You can look for those on my JavaScript compiler. Also this is a lightweight compiler I coded with my friend Hasan in about 4 days. So, it's not Microsoft's level. Happy compiling.
+<br/>As said before this compiler doesn't support the declaration of objects (OOP) or the manipulation of arrays. You can look for those on my JavaScript compiler. Also this is a lightweight compiler I coded with my friend Hasan Serhan in about 4 days. So, it's not Microsoft's level. Happy compiling.
